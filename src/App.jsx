@@ -1,7 +1,12 @@
-import { useState } from 'react'
 import Hero from './components/Hero'
-import Wishes from './components/Wishes'
 import Gallery from './components/Gallery'
+import VideoGallery from './components/VideoGallery'
+import Slideshow from './components/Slideshow'
+import FamilyMoments from './components/FamilyMoments'
+import PageBackground from './components/PageBackground'
+import Bubbles from './components/Bubbles'
+import BirthdayMusic from './components/BirthdayMusic'
+import Reveal from './components/Reveal'
 import './App.css'
 
 // ✏️ STEP 2: PROPS
@@ -16,20 +21,21 @@ const BIRTHDAY_INFO = {
 }
 
 function App() {
-  const [confettiOn, setConfettiOn] = useState(false)
-
   return (
     <div className="app">
+      <PageBackground />
+      <Bubbles />
+      <BirthdayMusic />
       {/* Props look like HTML attributes. Hero receives them as a JS object. */}
       <Hero
         name={BIRTHDAY_INFO.name}
         age={BIRTHDAY_INFO.age}
         date={BIRTHDAY_INFO.date}
-        confettiOn={confettiOn}
-        onCelebrate={() => setConfettiOn(true)}
       />
-      <Wishes name={BIRTHDAY_INFO.name} />
-      <Gallery />
+      <Reveal><FamilyMoments /></Reveal>
+      <Reveal><VideoGallery /></Reveal>
+      <Reveal><Gallery /></Reveal>
+      <Reveal><Slideshow /></Reveal>
     </div>
   )
 }
