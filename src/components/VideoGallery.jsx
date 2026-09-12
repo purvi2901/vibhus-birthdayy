@@ -10,12 +10,43 @@ const videoModules = import.meta.glob('../assets/vibhu-video/*.mp4', {
   import: 'default',
 })
 
+// A pool of real photos to use as a poster for clips that don't have their
+// own still from curatedMoments.js — beats a flat gradient. Family/group
+// shots (used over in FamilyMoments.jsx / PageBackground.jsx) are excluded
+// so only solo photos of Vaibhavi show up here.
+const FAMILY_PHOTOS = new Set([
+  'MMF_5322.jpg.jpeg',
+  'MMF_5041.jpg.jpeg',
+  'MMF_5307.jpg.jpeg',
+  '20260509_131535.jpg',
+  'IMG-20260621-WA0134.jpg',
+  'IMG-20260912-WA0061.jpg',
+  'IMG-20251005-WA0819.jpg',
+  'IMG-20251005-WA0376.jpg',
+  'IMG-20250913-WA0018.jpg',
+])
+
+const photoModules = import.meta.glob('../assets/vibhu-photo/*.{jpg,jpeg,JPG,JPEG,png,PNG}', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+})
+const PHOTO_POOL = Object.entries(photoModules)
+  .filter(([path]) => !FAMILY_PHOTOS.has(path.split('/').pop()))
+  .map(([, url]) => url)
+
+function randomPhoto() {
+  if (PHOTO_POOL.length === 0) return null
+  return PHOTO_POOL[Math.floor(Math.random() * PHOTO_POOL.length)]
+}
+
 // Clips without a title in curatedMoments.js all share this one.
 const DEFAULT_TITLE = 'Giggle Moment 🤭'
 
-// Clips listed in curatedMoments.js keep their own title, mute setting and
-// music. They're matched by filename, so a clip that's been deleted from the
-// folder is simply skipped instead of breaking the build.
+// Clips listed in curatedMoments.js keep their own title, mute setting,
+// music, and a still photo to show before it's played. They're matched by
+// filename, so a clip that's been deleted from the folder is simply
+// skipped instead of breaking the build.
 const VIDEO_BY_NAME = new Map(
   Object.entries(videoModules).map(([path, url]) => [path.split('/').pop(), url])
 )
@@ -32,6 +63,7 @@ const VIDEOS = Object.entries(videoModules).map(([path, url]) => {
     id: path,
     url,
     label: DEFAULT_TITLE,
+    poster: moment?.photo ?? randomPhoto(),
     muteVideo: Boolean(moment?.muteVideo),
     music: moment?.music ?? DEFAULT_MUSIC,
   }
@@ -66,23 +98,26 @@ function VideoCard({ video, index, isOpen, onOpen }) {
       style={{ '--d': `${(index % PAGE_SIZE) * 70}ms` }}
       onClick={() => !isOpen && onOpen(video.id)}
     >
-      {/* #t=0.1 makes the browser paint a real frame instead of a black box */}
-      <video
-        key={isOpen ? 'open' : 'preview'}
-        src={`${video.url}#t=0.1`}
-        ref={el => { if (el) el.muted = isOpen ? video.muteVideo : true }}
-        onPlay={handlePlay}
-        onPause={stopForVideo}
-        onEnded={stopForVideo}
-        onVolumeChange={handleVolumeChange}
-        controls={isOpen}
-        autoPlay={isOpen}
-        preload="metadata"
-        playsInline
-      />
-
-      {!isOpen && (
-        <span className="video-play" aria-hidden>▶</span>
+      {isOpen ? (
+        // Only mounted once opened, so nothing loads until it's actually wanted
+        <video
+          src={video.url}
+          ref={el => { if (el) el.muted = video.muteVideo }}
+          onPlay={handlePlay}
+          onPause={stopForVideo}
+          onEnded={stopForVideo}
+          onVolumeChange={handleVolumeChange}
+          controls
+          autoPlay
+          playsInline
+        />
+      ) : (
+        <div
+          className="video-poster"
+          style={video.poster ? { backgroundImage: `url(${video.poster})` } : undefined}
+        >
+          <span className="video-play" aria-hidden>▶</span>
+        </div>
       )}
 
       <p className="video-card-label">{video.label}</p>
@@ -91,7 +126,6 @@ function VideoCard({ video, index, isOpen, onOpen }) {
 }
 
 function VideoGallery() {
-  // Shuffled once per visit, so it's a different handful every time
   // A fresh random handful on every page load
   const [deck, setDeck] = useState(() => shuffle(VIDEOS).slice(0, PAGE_SIZE))
   const [openId, setOpenId] = useState(null)
